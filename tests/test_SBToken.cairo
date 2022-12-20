@@ -153,23 +153,36 @@ func test_remove_token{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         assert success = TRUE;
     %{ stop_prank_callable() %}
 
-    
-    // //Check whether the token owner address is TEST_ACC1
-    // let (owner) = ISBToken.owner_of(contract_address=contract_address, token_id=Uint256(1, 0));
-
-    //     //%{ print(f"owner: {ids.owner}") %}
-    // assert owner = 0;
-
-    // let (token_id) = ISBToken.token_id_of(contract_address=contract_address, owner=TEST_ACC1);
-
-    // assert token_id.low = 0;
-
     // Try burning already burned Token 
     %{ expect_revert(error_type="TRANSACTION_FAILED", error_message="Burn: token does not exist") %}
     %{ stop_prank_callable = start_prank(ids.CREATOR, ids.contract_address) %}
 
     ISBToken.remove_token(contract_address=contract_address, owner=TEST_ACC1 );
    
+    %{ stop_prank_callable() %}
+
+    return ();
+}
+
+@external
+func test_remove_token_from_non_creator{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    tempvar contract_address;
+    %{ ids.contract_address = context.contract_address %}
+
+    // Mint SBToken to TEST_ACC1
+    %{ stop_prank_callable = start_prank(ids.CREATOR, ids.contract_address) %}
+    let (new_token_id) = ISBToken.mint(contract_address=contract_address, owner=TEST_ACC1, owner_name='SAM', graduation_status=Uint256(1, 0) );
+    %{ stop_prank_callable() %}
+
+    // Try burning from non-creator 
+    %{ expect_revert(error_type="TRANSACTION_FAILED", error_message="Remove_Token: caller must be the creator") %}
+     // Call as TEST.ACC2
+    %{ stop_prank_callable = start_prank(ids.TEST_ACC2, ids.contract_address) %}
+
+    // Try removing SBToken owned by TEST_ACC1
+    let (success)= ISBToken.remove_token(contract_address=contract_address, owner=TEST_ACC1 );
+        assert success = TRUE;
     %{ stop_prank_callable() %}
 
     return ();
