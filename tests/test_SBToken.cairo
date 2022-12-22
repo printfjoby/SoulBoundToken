@@ -219,4 +219,26 @@ func test_unequip{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     return ();
 }
 
+@external
+func test_unequip_by_non_owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    tempvar contract_address;
+    %{ ids.contract_address = context.contract_address %}
 
+    // Mint SBToken to TEST_ACC1
+    %{ stop_prank_callable = start_prank(ids.CREATOR, ids.contract_address) %}
+    let (new_token_id) = ISBToken.mint(contract_address=contract_address, owner=TEST_ACC1, owner_name='SAM', graduation_status=Uint256(1, 0) );
+    %{ stop_prank_callable() %}
+
+    // Try burning from non-owner 
+    %{ expect_revert(error_type="TRANSACTION_FAILED", error_message="Burn: token does not exist") %}
+     // Call as TEST.ACC2
+    %{ stop_prank_callable = start_prank(ids.TEST_ACC2, ids.contract_address) %}
+
+    // Try removing SBToken owned by TEST_ACC1
+    let (success)= ISBToken.unequip(contract_address=contract_address );
+        assert success = TRUE;
+    %{ stop_prank_callable() %}
+
+    return ();
+}
